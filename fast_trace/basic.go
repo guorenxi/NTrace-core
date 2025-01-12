@@ -31,10 +31,11 @@ const (
 	CT163  string = "电信 163 AS4134"
 	CTCN2  string = "电信 CN2 AS4809"
 	CU169  string = "联通 169 AS4837"
-	CU9929 string = "联通 A网 AS9929"
-	CM     string = "移动 骨干网 AS9808"
+	CU9929 string = "联通 A网(CNC) AS9929"
+	CM     string = "移动 CMNET AS9808"
 	CMIN2  string = "移动 CMIN2 AS58807"
 	EDU    string = "教育网 CERNET AS4538"
+	CST    string = "科技网 CSTNET AS7497"
 )
 
 var TestIPsCollection = AllLocationCollection{
@@ -51,6 +52,11 @@ var Beijing = BackBoneCollection{
 		ISPName: CT163,
 		IP:      "ipv4.pek-4134.endpoint.nxtrace.org.",
 		IPv6:    "ipv6.pek-4134.endpoint.nxtrace.org.",
+	},
+
+	CTCN2: ISPCollection{
+		ISPName: CTCN2,
+		IP:      "ipv4.pek-4809.endpoint.nxtrace.org.",
 	},
 
 	CU169: ISPCollection{
@@ -79,6 +85,13 @@ var Beijing = BackBoneCollection{
 		ISPName: EDU,
 		IP:      "ipv4.pek-4538.endpoint.nxtrace.org.",
 		IPv6:    "ipv6.pek-4538.endpoint.nxtrace.org.",
+	},
+
+	// 中科院
+	CST: ISPCollection{
+		ISPName: CST,
+		IP:      "ipv4.pek-7497.endpoint.nxtrace.org.",
+		IPv6:    "ipv6.pek-7497.endpoint.nxtrace.org.",
 	},
 }
 
@@ -133,16 +146,38 @@ var Guangzhou = BackBoneCollection{
 		IPv6:    "ipv6.can-4134.endpoint.nxtrace.org.",
 	},
 
+	CTCN2: ISPCollection{
+		ISPName: CTCN2,
+		IP:      "ipv4.can-4809.endpoint.nxtrace.org.",
+	},
+
 	CU169: ISPCollection{
 		ISPName: CU169,
 		IP:      "ipv4.can-4837.endpoint.nxtrace.org.",
 		IPv6:    "ipv6.can-4837.endpoint.nxtrace.org.",
 	},
 
+	CU9929: ISPCollection{
+		ISPName: CU9929,
+		IP:      "ipv4.can-9929.endpoint.nxtrace.org.",
+	},
+
 	CM: ISPCollection{
 		ISPName: CM,
 		IP:      "ipv4.can-9808.endpoint.nxtrace.org.",
 		IPv6:    "ipv6.can-9808.endpoint.nxtrace.org.",
+	},
+
+	CMIN2: ISPCollection{
+		ISPName: CMIN2,
+		IP:      "ipv4.can-58807.endpoint.nxtrace.org.",
+	},
+
+	// 中山大学
+	EDU: ISPCollection{
+		ISPName: EDU,
+		IP:      "ipv4.can-4538.endpoint.nxtrace.org.",
+		IPv6:    "ipv6.can-4538.endpoint.nxtrace.org.",
 	},
 }
 
@@ -156,6 +191,7 @@ var Hangzhou = BackBoneCollection{
 	CU169: ISPCollection{
 		ISPName: CU169,
 		IP:      "ipv4.hgh-4837.endpoint.nxtrace.org.",
+		IPv6:    "ipv6.hgh-4837.endpoint.nxtrace.org.",
 	},
 	CM: ISPCollection{
 		ISPName: CM,
@@ -180,7 +216,7 @@ var Hefei = BackBoneCollection{
 	},
 	// 中国科学技术大学 科技网
 	CST: ISPCollection{
-		ISPName: "中国科学技术大学 科技网 AS7497",
+		ISPName: CST,
 		IP:      "ipv4.hfe-7497.endpoint.nxtrace.org.",
 	},
 }

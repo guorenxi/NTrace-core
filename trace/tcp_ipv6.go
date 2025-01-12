@@ -47,7 +47,7 @@ func (t *TCPTracerv6) Execute() (*Result, error) {
 	if err != nil {
 		return nil, err
 	}
-	t.icmp, err = icmp.ListenPacket("ip6:58", "::")
+	t.icmp, err = icmp.ListenPacket("ip6:ipv6-icmp", "::")
 	if err != nil {
 		return &t.res, err
 	}
@@ -227,13 +227,20 @@ func (t *TCPTracerv6) send(ttl int) error {
 
 	desiredPayloadSize := t.Config.PktSize
 	payload := make([]byte, desiredPayloadSize)
-	copy(buf.Bytes(), payload)
+	// 设置随机种子
+	rand.Seed(time.Now().UnixNano())
 
-	if err := gopacket.SerializeLayers(buf, opts, tcpHeader); err != nil {
+	// 填充随机数
+	for i := range payload {
+		payload[i] = byte(rand.Intn(256))
+	}
+	//copy(buf.Bytes(), payload)
+
+	if err := gopacket.SerializeLayers(buf, opts, tcpHeader, gopacket.Payload(payload)); err != nil {
 		return err
 	}
 
-	ipv6.NewPacketConn(t.tcp).SetHopLimit(ttl)
+	err = ipv6.NewPacketConn(t.tcp).SetHopLimit(ttl)
 	if err != nil {
 		return err
 	}
@@ -244,7 +251,7 @@ func (t *TCPTracerv6) send(ttl int) error {
 	}
 	// log.Println(ttl, sequenceNumber)
 	t.inflightRequestLock.Lock()
-	hopCh := make(chan Hop)
+	hopCh := make(chan Hop, 1)
 	t.inflightRequest[int(sequenceNumber)] = hopCh
 	t.inflightRequestLock.Unlock()
 
