@@ -24,9 +24,6 @@
   <a href="https://www.nxtrace.org/downloads">
     <img src="https://img.shields.io/github/release/nxtrace/Ntrace-V1/all.svg?style=flat-square">
   </a>
-  <a href="https://telegram.dog/sjprojects">
-    <img src="https://img.shields.io/endpoint?color=neon&style=flat-square&url=https%3A%2F%2Ftg.sumanjay.workers.dev%2Fnexttrace">
-  </a>
 </p>
 
 ## IAAS Sponsor
@@ -60,27 +57,46 @@ Please note, there are exceptions to this synchronization. If a version of NTrac
 
 * Linux
     * One-click installation script
-
       ```shell
       curl nxtrace.org/nt |bash
       ```
+
+    * Install nxtrace from the APT repository
+        * Supports AMD64/ARM64 architectures
+          ```shell
+          echo "deb [trusted=yes] https://github.com/nxtrace/nexttrace-debs/releases/latest/download ./" |
+          sudo tee /etc/apt/sources.list.d/nexttrace.list
+          sudo apt update
+          sudo apt install nexttrace
+          ```
+        * APT repository maintained by wcbing and nxtrace
+
     * Arch Linux AUR installation command
         * Directly download bin package (only supports amd64)
+          ```shell
+          yay -S nexttrace-bin
+          ```
+        * Build from source (only supports amd64)
+          ```shell
+          yay -S nexttrace
+          ```
+        * The AUR builds are maintained by ouuan, huyz
 
-             ```shell
-             yay -S nexttrace-bin
-             ```
-        * The AUR builds are maintained by ouuan
-    * Linuxbrew's installation command
+    * Linuxbrew's installation command  
 
-        Same as the macOS Homebrew's installation method (homebrew-core version only supports amd64)
+      Same as the macOS Homebrew's installation method (homebrew-core version only supports amd64)
+
     * Deepin installation command
-
       ```shell
       apt install nexttrace
       ```
-    * Termux installation command
+    
+    * [x-cmd](https://www.x-cmd.com/pkg/nexttrace) installation command
+      ```shell
+      x env use nexttrace
+      ```
 
+    * Termux installation command
       ```shell
       pkg install nexttrace-enhanced
       ```
@@ -88,28 +104,31 @@ Please note, there are exceptions to this synchronization. If a version of NTrac
 * macOS
     * macOS Homebrew's installation command
         * Homebrew-core version
-
-             ```shell
-             brew install nexttrace
-             ```
+          ```shell
+          brew install nexttrace
+          ```
         * This repository's ACTIONS automatically built version (updates faster)
-
-             ```shell
-             brew tap nxtrace/nexttrace && brew install nxtrace/nexttrace/nexttrace
-             ```
+          ```shell
+          brew tap nxtrace/nexttrace && brew install nxtrace/nexttrace/nexttrace
+          ```
         * The homebrew-core build is maintained by chenrui333, please note that this version's updates may lag behind the repository Action automatically version
 
 * Windows
+    * Windows WinGet installation command
+        * WinGet version
+          ```powershell
+          winget install nexttrace
+          ```
+        * WinGet build maintained by Dragon1573
+
     * Windows Scoop installation command
         * Scoop-extras version
-
-             ```powershell
-             scoop bucket add extras && scoop install extras/nexttrace
-             ```
-
+          ```powershell
+          scoop bucket add extras && scoop install extras/nexttrace
+          ```
         * Scoop-extra is maintained by soenggam
 
-    Please note, the repositories for all of the above installation methods are maintained by open source enthusiasts. Availability and timely updates are not guaranteed. If you encounter problems, please contact the repository maintainer to solve them, or use the binary packages provided by the official build of this project.
+Please note, the repositories for all of the above installation methods are maintained by open source enthusiasts. Availability and timely updates are not guaranteed. If you encounter problems, please contact the repository maintainer to solve them, or use the binary packages provided by the official build of this project.
 
 ### Manual Install
 * Download the precompiled executable
@@ -118,21 +137,6 @@ Please note, there are exceptions to this synchronization. If a version of NTrac
 
     * `Release` provides compiled binary executables for many systems and different architectures. If none are available, you can compile it yourself.
     * Some essential dependencies of this project are not fully implemented on `Windows` by `Golang`, so currently, `NextTrace` is in an experimental support phase on the `Windows` platform.
-
-* Install from source
-
-    After installing Go >= 1.20 yourself, you can use the following command to install
-
-    ```shell
-    go install github.com/nxtrace/NTrace-core@latest
-    ```
-    *because of the version constraints conflict, you can not install  `NTrace-V1` by this*
-    After installation, the executable is in the `$GOPATH/bin` directory. If you have not set `GOPATH`, it is in the `$HOME/go/bin` directory.
-    The binary file name is consistent with the project name. You need to replace the `nexttrace` command below with `NTrace-core`.
-     If you want to be consistent with the commands below, you can rename the binary after executing the `go install` command
-    ```shell
-    mv  $GOPATH/bin/NTrace-core $GOPATH/bin/nexttrace
-    ``` 
 
 ### Get Started
 
@@ -240,6 +244,9 @@ nexttrace --no-rdns www.bbix.net
 # Set the payload size to 1024 bytes
 nexttrace --psize 1024 example.com
 
+# Set the payload size and DF flag for TCP Trace
+nexttrace --psize 1024 --dont-fragment --tcp example.com
+
 # Feature: print Route-Path diagram
 # Route-Path diagram example:
 # AS6453 Tata Communication「Singapore『Singapore』」
@@ -264,9 +271,13 @@ export NO_COLOR=1
 nexttrace --data-provider ip-api.com
 ## Note There are frequency limits for free queries of the ipinfo and IPInsight APIs. You can purchase services from these providers to remove the limits
 ##      If necessary, you can clone this project, add the token provided by ipinfo or IPInsight and compile it yourself
+##      Fill the token to: ipgeo/tokens.go
+
 ## Note For the offline database IPInfoLocal, please download it manually and rename it to ipinfoLocal.mmdb. (You can download it from here: https://ipinfo.io/signup?ref=free-database-downloads)
+##      Current directory, nexttrace binary directory and FHS directories (Unix-like) will be searched.
+##      To customize it, please use environment variables,
+export NEXTTRACE_IPINFOLOCALPATH=/xxx/yyy.mmdb
 ##      For the offline database Ip2region, you can download it manually and rename it to ip2region.db, or let NextTrace download it automatically
-## Fill the token to: ipgeo/tokens.go
 ## Please be aware: Due to the serious abuse of IP.SB, you will often be not able to query IP data from this source
 ## IP-API.com has a stricter restiction on API calls, if you can't query IP data from this source, please try again in a few minutes
 
@@ -292,7 +303,7 @@ nexttrace -T -q 2 --parallel-requests 1 -t -P 2001:4860:4860::8888
 
 ### IP Database
 
-#### We use [bgp.tools](https://bgp.tools) as a data provider for routing tables.
+We use [bgp.tools](https://bgp.tools) as a data provider for routing tables.
 
 NextTrace BackEnd is now open-source.
 
@@ -332,16 +343,10 @@ Arguments:
   -T  --tcp                          Use TCP SYN for tracerouting (default port
                                      is 80)
   -U  --udp                          Use UDP SYN for tracerouting (default port
-                                     is 53)
+                                     is 33494)
   -F  --fast-trace                   One-Key Fast Trace to China ISPs
-  -p  --port                         Set the destination port to use. It is
-                                     either initial udp port value for
-                                     "default"method (incremented by each
-                                     probe, default is 33434), or initial seq
-                                     for "icmp" (incremented as well, default
-                                     from 1), or some constantdestination port
-                                     for other methods (with default of 80 for
-                                     "tcp", 53 for "udp", etc.)
+  -p  --port                         Set the destination port to use. With
+                                     default of 80 for "tcp", 33494 for "udp"
   -q  --queries                      Set the number of probes per each hop.
                                      Default: 3
       --parallel-requests            Set ParallelRequests number. It should be
@@ -353,9 +358,9 @@ Arguments:
                                      IPInfo, IPInsight, IP-API.com, Ip2region,
                                      IPInfoLocal, CHUNZHEN, disable-geoip].
                                      Default: LeoMoeAPI
-      --pow-provider                 Choose PoW Provider [api.nxtrace.org, sakura]
-                                     For China mainland users, please use
-                                     sakura. Default: api.nxtrace.org
+      --pow-provider                 Choose PoW Provider [api.nxtrace.org,
+                                     sakura] For China mainland users, please
+                                     use sakura. Default: api.nxtrace.org
   -n  --no-rdns                      Do not resolve IP addresses to their
                                      domain names
   -a  --always-rdns                  Always resolve IP addresses to their
@@ -382,16 +387,15 @@ Arguments:
   -z  --send-time                    Set how many [milliseconds] between
                                      sending each packet.. Useful when some
                                      routers use rate-limit for ICMP messages.
-                                     Default: 100
+                                     Default: 50
   -i  --ttl-time                     Set how many [milliseconds] between
                                      sending packets groups by TTL. Useful when
                                      some routers use rate-limit for ICMP
-                                     messages. Default: 500
+                                     messages. Default: 50
       --timeout                      The number of [milliseconds] to keep probe
                                      sockets open before giving up on the
                                      connection.. Default: 1000
-      --psize                        Set the packet size (payload size).
-                                     Default: 52
+      --psize                        Set the payload size. Default: 52
       --_positionalArg_nexttrace_32  IP Address or domain name
       --dot-server                   Use DoT Server for DNS Parse [dnssb,
                                      aliyun, dnspod, google, cloudflare]
@@ -399,6 +403,8 @@ Arguments:
                                      cn]. Default: cn
       --file                         Read IP Address or domain name from file
   -C  --nocolor                      Disable Colorful Output
+      --dont-fragment                Set the Don't Fragment bit (IPv4 TCP
+                                     only). Default: false
 ```
 
 ## Project screenshot
@@ -421,6 +427,14 @@ This software is still in the early stages of development and may have many flaw
 
 [https://github.com/nxtrace/nexttracewebapi](https://github.com/nxtrace/nexttracewebapi)
 
+## NextTraceroute
+
+`NextTraceroute` is a root-free Android route tracing application that defaults to using the `NextTrace API`, developed by @surfaceocean.  
+Thank you to all the test users for your enthusiastic support. This app has successfully passed the closed testing phase and is now officially available on the Google Play Store.
+
+[https://github.com/nxtrace/NextTraceroute](https://github.com/nxtrace/NextTraceroute)  
+<a href='https://play.google.com/store/apps/details?id=com.surfaceocean.nexttraceroute&pcampaignid=pcampaignidMKT-Other-global-all-co-prtnr-py-PartBadge-Mar2515-1'><img alt='Get it on Google Play' width="128" height="48" src='https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png'/></a>
+
 ## LeoMoeAPI Credits
 
 NextTrace focuses on Golang Traceroute implementations, and its LeoMoeAPI geolocation information is not supported by raw data, so a commercial version is not possible.
@@ -440,11 +454,13 @@ We hope you can give us as much feedback as possible on IP geolocation errors (s
 
 ## JetBrain Support
 
-#### This Project uses [JetBrain Open-Source Project License](https://jb.gg/OpenSourceSupport). We Proudly Develop By Goland.
+This Project uses [JetBrain Open-Source Project License](https://jb.gg/OpenSourceSupport). We Proudly Develop By `Goland`.
 
 <img src="https://resources.jetbrains.com/storage/products/company/brand/logos/GoLand.png" title="" alt="GoLand logo" width="331">
 
 ## Credits
+
+[Gubo](https://www.gubo.org) Reliable Host Recommendation Website
 
 [IPInfo](https://ipinfo.io) Provided most of the data support for this project free of charge
 

@@ -3,7 +3,6 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/fatih/color"
 	"log"
 	"net"
 	"os"
@@ -11,6 +10,8 @@ import (
 	"runtime"
 	"strings"
 	"time"
+
+	"github.com/fatih/color"
 
 	"github.com/akamensky/argparse"
 	"github.com/nxtrace/NTrace-core/config"
@@ -32,11 +33,9 @@ func Excute() {
 	ipv4Only := parser.Flag("4", "ipv4", &argparse.Options{Help: "Use IPv4 only"})
 	ipv6Only := parser.Flag("6", "ipv6", &argparse.Options{Help: "Use IPv6 only"})
 	tcp := parser.Flag("T", "tcp", &argparse.Options{Help: "Use TCP SYN for tracerouting (default port is 80)"})
-	udp := parser.Flag("U", "udp", &argparse.Options{Help: "Use UDP SYN for tracerouting (default port is 53)"})
+	udp := parser.Flag("U", "udp", &argparse.Options{Help: "Use UDP SYN for tracerouting (default port is 33494)"})
 	fast_trace := parser.Flag("F", "fast-trace", &argparse.Options{Help: "One-Key Fast Trace to China ISPs"})
-	port := parser.Int("p", "port", &argparse.Options{Help: "Set the destination port to use. It is either initial udp port value for \"default\"" +
-		"method (incremented by each probe, default is 33434), or initial seq for \"icmp\" (incremented as well, default from 1), or some constant" +
-		"destination port for other methods (with default of 80 for \"tcp\", 53 for \"udp\", etc.)"})
+	port := parser.Int("p", "port", &argparse.Options{Help: "Set the destination port to use. With default of 80 for \"tcp\", 33494 for \"udp\"", Default: 80})
 	numMeasurements := parser.Int("q", "queries", &argparse.Options{Default: 3, Help: "Set the number of probes per each hop"})
 	parallelRequests := parser.Int("", "parallel-requests", &argparse.Options{Default: 18, Help: "Set ParallelRequests number. It should be 1 when there is a multi-routing"})
 	maxHops := parser.Int("m", "max-hops", &argparse.Options{Default: 30, Help: "Set the max number of hops (max TTL to be reached)"})
@@ -61,10 +60,10 @@ func Excute() {
 	srcAddr := parser.String("s", "source", &argparse.Options{Help: "Use source src_addr for outgoing packets"})
 	srcDev := parser.String("D", "dev", &argparse.Options{Help: "Use the following Network Devices as the source address in outgoing packets"})
 	//router := parser.Flag("R", "route", &argparse.Options{Help: "Show Routing Table [Provided By BGP.Tools]"})
-	packetInterval := parser.Int("z", "send-time", &argparse.Options{Default: 100, Help: "Set how many [milliseconds] between sending each packet.. Useful when some routers use rate-limit for ICMP messages"})
-	ttlInterval := parser.Int("i", "ttl-time", &argparse.Options{Default: 500, Help: "Set how many [milliseconds] between sending packets groups by TTL. Useful when some routers use rate-limit for ICMP messages"})
+	packetInterval := parser.Int("z", "send-time", &argparse.Options{Default: 50, Help: "Set how many [milliseconds] between sending each packet.. Useful when some routers use rate-limit for ICMP messages"})
+	ttlInterval := parser.Int("i", "ttl-time", &argparse.Options{Default: 50, Help: "Set how many [milliseconds] between sending packets groups by TTL. Useful when some routers use rate-limit for ICMP messages"})
 	timeout := parser.Int("", "timeout", &argparse.Options{Default: 1000, Help: "The number of [milliseconds] to keep probe sockets open before giving up on the connection."})
-	packetSize := parser.Int("", "psize", &argparse.Options{Default: 52, Help: "Set the packet size (payload size)"})
+	packetSize := parser.Int("", "psize", &argparse.Options{Default: 52, Help: "Set the payload size"})
 	str := parser.StringPositional(&argparse.Options{Help: "IP Address or domain name"})
 	dot := parser.Selector("", "dot-server", []string{"dnssb", "aliyun", "dnspod", "google", "cloudflare"}, &argparse.Options{
 		Help: "Use DoT Server for DNS Parse [dnssb, aliyun, dnspod, google, cloudflare]"})
@@ -72,6 +71,7 @@ func Excute() {
 		Help: "Choose the language for displaying [en, cn]"})
 	file := parser.String("", "file", &argparse.Options{Help: "Read IP Address or domain name from file"})
 	nocolor := parser.Flag("C", "nocolor", &argparse.Options{Help: "Disable Colorful Output"})
+	dontFragment := parser.Flag("", "dont-fragment", &argparse.Options{Default: false, Help: "Set the Don't Fragment bit (IPv4 TCP only)"})
 
 	err := parser.Parse(os.Args)
 	if err != nil {
@@ -96,16 +96,28 @@ func Excute() {
 		os.Exit(0)
 	}
 
+	if !*tcp && *port == 80 {
+		*port = 33494
+	}
+
 	domain := *str
 
-	if *port == 0 {
-		*port = 80
+	var m trace.Method
+
+	switch {
+	case *tcp:
+		m = trace.TCPTrace
+	case *udp:
+		m = trace.UDPTrace
+	default:
+		m = trace.ICMPTrace
 	}
 
 	if *fast_trace || *file != "" {
 		var paramsFastTrace = fastTrace.ParamsFastTrace{
 			SrcDev:         *srcDev,
 			SrcAddr:        *srcAddr,
+			DestPort:       *port,
 			BeginHop:       *beginHop,
 			MaxHops:        *maxHops,
 			RDns:           !*noRdns,
@@ -114,9 +126,11 @@ func Excute() {
 			PktSize:        *packetSize,
 			Timeout:        time.Duration(*timeout) * time.Millisecond,
 			File:           *file,
+			DontFragment:   *dontFragment,
+			Dot:            *dot,
 		}
 
-		fastTrace.FastTest(*tcp, *output, paramsFastTrace)
+		fastTrace.FastTest(m, *output, paramsFastTrace)
 		if *output {
 			fmt.Println("您的追踪日志已经存放在 /tmp/trace.log 中")
 		}
@@ -131,6 +145,7 @@ func Excute() {
 	}
 
 	if strings.Contains(domain, "/") {
+		domain = "n" + domain
 		parts := strings.Split(domain, "/")
 		if len(parts) < 3 {
 			fmt.Println("Invalid input")
@@ -148,7 +163,7 @@ func Excute() {
 	}
 	// DOMAIN处理结束
 
-	capabilities_check()
+	capabilitiesCheck()
 	// return
 
 	var ip net.IP
@@ -185,7 +200,9 @@ func Excute() {
 			w.Interrupt = make(chan os.Signal, 1)
 			signal.Notify(w.Interrupt, os.Interrupt)
 			defer func() {
-				w.Conn.Close()
+				if w.Conn != nil {
+					w.Conn.Close()
+				}
 			}()
 		}
 	}
@@ -236,22 +253,7 @@ func Excute() {
 	}
 
 	if !*jsonPrint {
-		printer.PrintTraceRouteNav(ip, domain, *dataOrigin, *maxHops, *packetSize)
-	}
-
-	var m trace.Method
-
-	switch {
-	case *tcp:
-		m = trace.TCPTrace
-	case *udp:
-		m = trace.UDPTrace
-	default:
-		m = trace.ICMPTrace
-	}
-
-	if !*tcp && *port == 80 {
-		*port = 53
+		printer.PrintTraceRouteNav(ip, domain, *dataOrigin, *maxHops, *packetSize, *srcAddr, string(m))
 	}
 
 	util.DestIP = ip.String()
@@ -272,6 +274,7 @@ func Excute() {
 		IPGeoSource:      ipgeo.GetSource(*dataOrigin),
 		Timeout:          time.Duration(*timeout) * time.Millisecond,
 		PktSize:          *packetSize,
+		DontFragment:     *dontFragment,
 	}
 
 	// 暂时弃用
@@ -357,7 +360,7 @@ func Excute() {
 	}
 }
 
-func capabilities_check() {
+func capabilitiesCheck() {
 
 	// Windows 判断放在前面，防止遇到一些奇奇怪怪的问题
 	if runtime.GOOS == "windows" {

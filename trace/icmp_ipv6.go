@@ -171,9 +171,10 @@ func (t *ICMPTracerv6) listenICMP() {
 				}
 
 			}
-			packet_id := strconv.FormatInt(int64(binary.BigEndian.Uint16(msg.Msg[52:54])), 2)
-			if process_id, ttl, err := reverseID(packet_id); err == nil {
-				if process_id == int64(os.Getpid()&0x7f) {
+			ttl := int64(binary.BigEndian.Uint16(msg.Msg[54:56]))
+			packetId := strconv.FormatInt(int64(binary.BigEndian.Uint16(msg.Msg[52:54])), 2)
+			if processId, _, err := reverseID(packetId); err == nil {
+				if processId == int64(os.Getpid()&0x7f) {
 					dstip := net.IP(msg.Msg[32:48])
 					// 无效包本地环回包
 					if dstip.String() == "::" {
@@ -260,14 +261,20 @@ func (t *ICMPTracerv6) send(ttl int) error {
 	if t.final != -1 && ttl > t.final {
 		return nil
 	}
-	id := gernerateID(ttl)
+	//id := gernerateID(ttl)
+	id := gernerateID(0)
+
+	//data := []byte{byte(ttl)}
+	data := []byte{byte(0)}
+	data = append(data, bytes.Repeat([]byte{1}, t.Config.PktSize-5)...)
+	data = append(data, 0x00, 0x00, 0x4f, 0xff)
 
 	icmpHeader := icmp.Message{
 		Type: ipv6.ICMPTypeEchoRequest, Code: 0,
 		Body: &icmp.Echo{
 			ID: id,
 			//Data: []byte("HELLO-R-U-THERE"),
-			Data: append(bytes.Repeat([]byte{1}, t.Config.PktSize-4), 0x00, 0x00, 0x4f, 0xff),
+			Data: data,
 			Seq:  ttl,
 		},
 	}
@@ -275,7 +282,10 @@ func (t *ICMPTracerv6) send(ttl int) error {
 	p := ipv6.NewPacketConn(t.icmpListen)
 
 	icmpHeader.Body.(*icmp.Echo).Seq = ttl
-	p.SetHopLimit(ttl)
+	err := p.SetHopLimit(ttl)
+	if err != nil {
+		return err
+	}
 
 	wb, err := icmpHeader.Marshal(nil)
 	if err != nil {
@@ -317,7 +327,10 @@ func (t *ICMPTracerv6) send(ttl int) error {
 
 		t.fetchLock.Lock()
 		defer t.fetchLock.Unlock()
-		h.fetchIPData(t.Config)
+		err := h.fetchIPData(t.Config)
+		if err != nil {
+			return err
+		}
 
 		t.res.add(h)
 

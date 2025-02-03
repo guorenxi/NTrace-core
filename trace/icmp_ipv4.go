@@ -69,7 +69,7 @@ func (t *ICMPTracer) Execute() (*Result, error) {
 
 	var err error
 
-	t.icmpListen, err = internal.ListenICMP("ip4:1", t.SrcAddr)
+	t.icmpListen, err = internal.ListenICMP("ip4:icmp", t.SrcAddr)
 	if err != nil {
 		return &t.res, err
 	}
@@ -150,9 +150,10 @@ func (t *ICMPTracer) listenICMP() {
 				}
 				continue
 			}
-			packet_id := strconv.FormatInt(int64(binary.BigEndian.Uint16(msg.Msg[32:34])), 2)
-			if process_id, ttl, err := reverseID(packet_id); err == nil {
-				if process_id == int64(os.Getpid()&0x7f) {
+			ttl := int64(binary.BigEndian.Uint16(msg.Msg[34:36]))
+			packetId := strconv.FormatInt(int64(binary.BigEndian.Uint16(msg.Msg[32:34])), 2)
+			if processId, _, err := reverseID(packetId); err == nil {
+				if processId == int64(os.Getpid()&0x7f) {
 					dstip := net.IP(msg.Msg[24:28])
 					if dstip.Equal(t.DestIP) || dstip.Equal(net.IPv4zero) {
 						// 匹配再继续解析包，否则直接丢弃
@@ -201,13 +202,13 @@ func (t *ICMPTracer) handleICMPMessage(msg ReceivedMessage, icmpType int8, data 
 	}
 }
 
-func gernerateID(ttl_int int) int {
-	const ID_FIXED_HEADER = "10"
+func gernerateID(ttlInt int) int {
+	const IdFixedHeader = "10"
 	var processID = fmt.Sprintf("%07b", os.Getpid()&0x7f) //取进程ID的前7位
-	var ttl = fmt.Sprintf("%06b", ttl_int)                //取TTL的后6位
+	var ttl = fmt.Sprintf("%06b", ttlInt)                 //取TTL的后6位
 
 	var parity int
-	id := ID_FIXED_HEADER + processID + ttl
+	id := IdFixedHeader + processID + ttl
 	for _, c := range id {
 		if c == '1' {
 			parity++
@@ -266,20 +267,29 @@ func (t *ICMPTracer) send(ttl int) error {
 		return nil
 	}
 
-	id := gernerateID(ttl)
+	//id := gernerateID(ttl)
+	id := gernerateID(0)
 	// log.Println("发送的", id)
+
+	//data := []byte{byte(ttl)}
+	data := []byte{byte(0)}
+	data = append(data, bytes.Repeat([]byte{1}, t.Config.PktSize-5)...)
+	data = append(data, 0x00, 0x00, 0x4f, 0xff)
 
 	icmpHeader := icmp.Message{
 		Type: ipv4.ICMPTypeEcho, Code: 0,
 		Body: &icmp.Echo{
 			ID: id,
 			//Data: []byte("HELLO-R-U-THERE"),
-			Data: append(bytes.Repeat([]byte{1}, t.Config.PktSize-4), 0x00, 0x00, 0x4f, 0xff),
+			Data: data,
 			Seq:  ttl,
 		},
 	}
 
-	ipv4.NewPacketConn(t.icmpListen).SetTTL(ttl)
+	err := ipv4.NewPacketConn(t.icmpListen).SetTTL(ttl)
+	if err != nil {
+		return err
+	}
 
 	wb, err := icmpHeader.Marshal(nil)
 	if err != nil {
@@ -321,7 +331,10 @@ func (t *ICMPTracer) send(ttl int) error {
 
 		t.fetchLock.Lock()
 		defer t.fetchLock.Unlock()
-		h.fetchIPData(t.Config)
+		err := h.fetchIPData(t.Config)
+		if err != nil {
+			return err
+		}
 
 		t.res.add(h)
 	case <-time.After(t.Timeout):
